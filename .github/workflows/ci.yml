@@ -1,0 +1,31 @@
+name: CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Lua
+        uses: leafo/gh-actions-lua@v10
+        with:
+          lua-version: 'luajit'
+      - name: Install luarocks
+        uses: leafo/gh-actions-luarocks@v4
+      - name: Install tools
+        run: |
+          luarocks install luacheck
+          curl -L https://github.com/JohnnyMorganz/StyLua/releases/download/v0.20.0/stylua-linux-x86_64.zip -o stylua.zip
+          unzip stylua.zip -d stylua-bin
+          echo "$(pwd)/stylua-bin" >> $GITHUB_PATH
+      - name: Luacheck
+        run: luacheck lua tests
+      - name: Stylua check
+        run: stylua --check lua tests || (echo 'Stylua formatting needed' && exit 1)
+
+

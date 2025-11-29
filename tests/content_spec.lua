@@ -1,0 +1,27 @@
+local content = require "nohands.content"
+
+describe("content sources", function()
+  it("buffer source returns text and meta", function()
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "line1", "line2" })
+    local c = content.buffer(0)
+    assert.is_not_nil(c.text:match "line1")
+    assert.equals("buffer", c.meta.type)
+  end)
+
+  it("range source returns correct lines", function()
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "a", "b", "c", "d" })
+    local c = content.range(1, 2)
+    assert.equals("b\nc", c.text)
+    assert.equals("range", c.meta.type)
+  end)
+
+  it("surrounding source returns contextual lines", function()
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "x", "y", "z", "q", "w" })
+    vim.api.nvim_win_set_cursor(0, { 3, 0 })
+    local c = content.surrounding(1, 1)
+    assert.is_not_nil(c.text:match "y")
+    assert.is_not_nil(c.text:match "z")
+    assert.is_not_nil(c.text:match "q")
+    assert.equals("surrounding", c.meta.type)
+  end)
+end)

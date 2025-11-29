@@ -1,0 +1,39 @@
+name: Tests
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        neovim_version: [v0.10.2, v0.11.0]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Fetch plenary into temp dir
+        run: |
+          TMP_PLENARY=$(mktemp -d)
+          git clone --depth 1 https://github.com/nvim-lua/plenary.nvim "$TMP_PLENARY"
+          echo "TMP_PLENARY=$TMP_PLENARY" >> $GITHUB_ENV
+      - name: List temp plenary
+        run: ls -1 "$TMP_PLENARY" | head -20
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.neovim_version }}
+      - name: Run tests
+        run: |
+          set -o pipefail
+          nvim --headless -c "set rtp+=$TMP_PLENARY" -c "lua require('plenary.test_harness').test_directory('tests', { minimal_init = 'tests/minimal_init.lua' })" -c qa 2>&1 | tee test-output.txt
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-${{ matrix.neovim_version }}
+          path: test-output.txt
