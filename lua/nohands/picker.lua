@@ -9,28 +9,62 @@ local function snacks_available()
   return pcall(require, "snacks")
 end
 
+-- simple wrapper to handle both the proper Snacks API (pick)
+-- and the legacy/test stub "prompt" used in minimal_init.lua
+---@param opts {title:string, items:table[], cb:fun(value:string)}
+local function picker_select(opts)
+  local snacks = require "snacks"
+  local picker = snacks.picker
+  -- Proper Snacks usage
+  if type(picker.pick) == "function" then
+    picker.pick {
+      title = opts.title,
+      items = opts.items,
+      confirm = function(_, item)
+        if item then
+          opts.cb(item.value or item.text)
+        end
+      end,
+      -- auto_confirm speeds up single-item flows
+      auto_confirm = #opts.items == 1,
+    }
+    return
+  end
+  -- Fallback to test stub
+  if type(picker.prompt) == "function" then
+    picker.prompt {
+      title = opts.title,
+      items = opts.items,
+      on_submit = function(sel)
+        if sel then
+          opts.cb(sel.value or sel.text)
+        end
+      end,
+    }
+  end
+end
+
 ---@return nil
 function M.open()
   if not config.get().picker.use_snacks or not snacks_available() then
     vim.notify("nohands: Snacks picker disabled or not found", vim.log.levels.WARN)
     return
   end
-  local snacks = require "snacks"
   local cfg = config.get()
+
   local function select_prompt(cb)
     local prompt_items = prompts.list()
     local prompt_choices = {}
     for _, p in ipairs(prompt_items) do
       prompt_choices[#prompt_choices + 1] = { text = p.name, value = p.name }
     end
-    snacks.picker.prompt {
+    picker_select {
       title = "nohands: select prompt",
       items = prompt_choices,
-      on_submit = function(sel)
-        cb(sel.value)
-      end,
+      cb = cb,
     }
   end
+
   local function select_source(prompt_name, session_name)
     local sources = {
       { text = "buffer", value = "buffer" },
@@ -38,43 +72,53 @@ function M.open()
       { text = "surrounding (10/10)", value = "surrounding", before = 10, after = 10 },
       { text = "diff (git)", value = "diff" },
     }
-    snacks.picker.prompt {
+    picker_select {
       title = "nohands: select source",
       items = sources,
-      on_submit = function(src_sel)
-        local source = src_sel.value
-        local before = src_sel.before
-        local after = src_sel.after
+      cb = function(src_value)
+        local source
+        local before
+        local after
+        for _, s in ipairs(sources) do
+          if (s.value or s.text) == src_value then
+            source = s.value or s.text
+            before = s.before
+            after = s.after
+            break
+          end
+        end
         local models = api.list_models()
         if #models == 0 then
           models = { cfg.model }
         end
-        local items = {}
+        local model_items = {}
         for _, m in ipairs(models) do
-          items[#items + 1] = { text = m, value = m }
+          model_items[#model_items + 1] = { text = m, value = m }
         end
-        snacks.picker.prompt {
+        picker_select {
           title = "nohands: select model",
-          items = items,
-          on_submit = function(model_sel)
+          items = model_items,
+          cb = function(model_value)
             actions.run {
               session = session_name,
               prompt = prompt_name,
               source = source,
               before = before,
               after = after,
-              model = model_sel.value,
+              model = model_value,
             }
           end,
         }
       end,
     }
   end
+
   local function start_flow(session_name)
     select_prompt(function(prompt_name)
       select_source(prompt_name, session_name)
     end)
   end
+
   if cfg.picker.session_first then
     local names = {}
     for k, _ in pairs(require("nohands.sessions").store) do
@@ -87,11 +131,11 @@ function M.open()
     for _, n in ipairs(names) do
       session_items[#session_items + 1] = { text = n, value = n }
     end
-    snacks.picker.prompt {
+    picker_select {
       title = "nohands: select session",
       items = session_items,
-      on_submit = function(sel)
-        start_flow(sel.value)
+      cb = function(session_value)
+        start_flow(session_value)
       end,
     }
   else
