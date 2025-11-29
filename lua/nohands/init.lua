@@ -60,6 +60,9 @@ function M.setup(opts)
     local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
     require("nohands.apply").apply_unified(table.concat(lines, "\n"))
   end, {})
+  vim.api.nvim_create_user_command("NoHandsHealth", function()
+    require("nohands.health").check()
+  end, {})
 end
 
 M.run = actions.run
