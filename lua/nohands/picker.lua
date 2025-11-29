@@ -30,18 +30,6 @@ local function picker_select(opts)
     }
     return
   end
-  -- Fallback to test stub
-  if type(picker.prompt) == "function" then
-    picker.prompt {
-      title = opts.title,
-      items = opts.items,
-      on_submit = function(sel)
-        if sel then
-          opts.cb(sel.value or sel.text)
-        end
-      end,
-    }
-  end
 end
 
 ---@return nil
