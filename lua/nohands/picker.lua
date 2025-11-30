@@ -17,17 +17,35 @@ local function picker_select(opts)
   local picker = snacks.picker
   local items = opts.items or {}
 
-  -- Proper Snacks picker usage for arbitrary values.
+  -- Normalize items to {text=..., value=...}
+  local norm = {}
+  for _, it in ipairs(items) do
+    norm[#norm + 1] = { text = it.text or it.value, value = it.value or it.text }
+  end
+
+  -- Use Snacks generic picker with an in-memory finder for fuzzy matching.
   if type(picker.pick) == "function" then
     picker.pick {
       title = opts.title,
-      items = items, -- direct items list (finder bypass)
-      format = "text", -- plain text items
-      layout = { preset = "select" }, -- compact layout suited for value selection
-      auto_confirm = #items == 1, -- fast-path when only one option
+      finder = function(filter)
+        if not filter or filter == "" then
+          return norm
+        end
+        local out = {}
+        local f = filter:lower()
+        for _, it in ipairs(norm) do
+          if it.text:lower():find(f, 1, true) then
+            out[#out + 1] = it
+          end
+        end
+        return out
+      end,
+      preview = false,
+      layout = { preset = "select" },
+      auto_confirm = #norm == 1,
       confirm = function(_, item)
         if item then
-          opts.cb(item.value or item.text)
+          opts.cb(item.value)
         end
       end,
     }
@@ -38,10 +56,10 @@ local function picker_select(opts)
   if picker.prompt then
     picker.prompt {
       title = opts.title,
-      items = items,
+      items = norm,
       on_submit = function(sel)
         if sel then
-          opts.cb(sel.value or sel.text)
+          opts.cb(sel.value)
         end
       end,
     }
