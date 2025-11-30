@@ -32,6 +32,12 @@ local function picker_select(opts)
       preview = false,
       layout = { preset = "select" },
       auto_confirm = #norm == 1,
+      format_item = function(item)
+        if type(item) == "string" then
+          return item
+        end
+        return item.text or tostring(item.value)
+      end,
       confirm = function(p, item)
         if item then
           opts.cb(item.value)

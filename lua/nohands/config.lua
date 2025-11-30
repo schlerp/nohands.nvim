@@ -35,9 +35,6 @@ local defaults = {
     attempts = 2, -- number of retry attempts for chat
     backoff_ms = 200, -- base backoff milliseconds
   },
-  indicator = {
-    enabled = true, -- show a simple running indicator while querying
-  },
 }
 
 ---@type NoHandsConfig

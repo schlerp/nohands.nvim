@@ -6,43 +6,19 @@ local sessions = require "nohands.sessions"
 
 local M = {}
 
-local spinner_frames = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
-
-local indicator_state = { timer = nil, frame = 1 }
-
-local function stop_indicator()
-  if indicator_state.timer then
-    indicator_state.timer:stop()
-    indicator_state.timer:close()
-    indicator_state.timer = nil
-  end
-  pcall(vim.api.nvim_echo, {}, false, {})
-end
-
-local function start_indicator()
-  local cfg = config.get()
-  if not (cfg.indicator and cfg.indicator.enabled) then
-    return
-  end
-  stop_indicator()
-  indicator_state.frame = 1
-  local timer = vim.loop.new_timer()
-  indicator_state.timer = timer
-  timer:start(
-    0,
-    120,
-    vim.schedule_wrap(function()
-      if not indicator_state.timer then
-        return
-      end
-      local frame = spinner_frames[indicator_state.frame]
-      indicator_state.frame = indicator_state.frame % #spinner_frames + 1
-      pcall(vim.api.nvim_echo, { { frame .. " nohands: querying model...", "ModeMsg" } }, false, {})
-    end)
-  )
-end
-
 local function write_output(method, text, incremental)
+  -- For replace/append, ask before mutating the current buffer.
+  if method == "replace" or method == "append" then
+    local choice = vim.fn.confirm(
+      "nohands: apply response to current buffer?",
+      "&Yes\n&No (show in temp buffer)",
+      2
+    )
+    if choice ~= 1 then
+      method = "split"
+    end
+  end
+
   if method == "replace" then
     local mode = vim.fn.mode()
     if mode:match "v" then
@@ -124,7 +100,6 @@ function M.run(opts)
     "nohands: querying model" .. (opts.stream and " (streaming)..." or "..."),
     vim.log.levels.INFO
   )
-  start_indicator()
 
   local method = opts.output or cfg.output.method
   if opts.stream then
@@ -152,16 +127,13 @@ function M.run(opts)
         last_flush = now
       end
     end, function(full)
-      stop_indicator()
       table.insert(session.messages, { role = "assistant", content = full })
       write_output(method, full, float_state)
     end, function(err)
-      stop_indicator()
       vim.notify("nohands stream error: " .. err, vim.log.levels.ERROR)
     end)
   else
     local out, err = api.chat(opts.model or cfg.model, session.messages, opts)
-    stop_indicator()
     if not out then
       vim.notify("nohands error: " .. err, vim.log.levels.ERROR)
       return
