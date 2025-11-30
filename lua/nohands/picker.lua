@@ -9,26 +9,42 @@ local function snacks_available()
   return pcall(require, "snacks")
 end
 
--- simple wrapper to handle both the proper Snacks API (pick)
--- and the legacy/test stub "prompt" used in minimal_init.lua
+-- Wrapper to create a simple value picker (non-file) using Snacks.
+-- Falls back to the test stub (picker.prompt) in CI.
 ---@param opts {title:string, items:table[], cb:fun(value:string)}
 local function picker_select(opts)
   local snacks = require "snacks"
   local picker = snacks.picker
-  -- Proper Snacks usage
+  local items = opts.items or {}
+
+  -- Proper Snacks picker usage for arbitrary values.
   if type(picker.pick) == "function" then
     picker.pick {
       title = opts.title,
-      items = opts.items,
+      items = items, -- direct items list (finder bypass)
+      format = "text", -- plain text items
+      layout = { preset = "select" }, -- compact layout suited for value selection
+      auto_confirm = #items == 1, -- fast-path when only one option
       confirm = function(_, item)
         if item then
           opts.cb(item.value or item.text)
         end
       end,
-      -- auto_confirm speeds up single-item flows
-      auto_confirm = #opts.items == 1,
     }
     return
+  end
+
+  -- Fallback: test stub defined in tests/minimal_init.lua exposes picker.prompt
+  if picker.prompt then
+    picker.prompt {
+      title = opts.title,
+      items = items,
+      on_submit = function(sel)
+        if sel then
+          opts.cb(sel.value or sel.text)
+        end
+      end,
+    }
   end
 end
 
@@ -40,6 +56,7 @@ function M.open()
   end
   local cfg = config.get()
 
+  -- 1. Prompt selection
   local function select_prompt(cb)
     local prompt_items = prompts.list()
     local prompt_choices = {}
@@ -53,6 +70,7 @@ function M.open()
     }
   end
 
+  -- 2. Source selection -> Model selection -> Execute action
   local function select_source(prompt_name, session_name)
     local sources = {
       { text = "buffer", value = "buffer" },
@@ -107,6 +125,7 @@ function M.open()
     end)
   end
 
+  -- Optional initial session selection
   if cfg.picker.session_first then
     local names = {}
     for k, _ in pairs(require("nohands.sessions").store) do
