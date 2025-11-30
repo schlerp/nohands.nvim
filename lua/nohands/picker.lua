@@ -27,14 +27,22 @@ local function picker_select(opts)
   if type(picker.pick) == "function" then
     picker.pick {
       title = opts.title,
+      items = norm,
       finder = function(filter)
-        if not filter or filter == "" then
+        local q = ""
+        if type(filter) == "string" then
+          q = filter
+        elseif type(filter) == "table" then
+          q = filter.query or filter.text or ""
+        end
+        if q == "" then
           return norm
         end
         local out = {}
-        local f = filter:lower()
+        local f = q:lower()
         for _, it in ipairs(norm) do
-          if it.text:lower():find(f, 1, true) then
+          local txt = type(it.text) == "string" and it.text or tostring(it.text)
+          if txt:lower():find(f, 1, true) then
             out[#out + 1] = it
           end
         end
@@ -43,9 +51,18 @@ local function picker_select(opts)
       preview = false,
       layout = { preset = "select" },
       auto_confirm = #norm == 1,
-      confirm = function(_, item)
+      confirm = function(p, item)
         if item then
           opts.cb(item.value)
+        end
+        if p and p.close then
+          pcall(function()
+            p:close()
+          end)
+        elseif snacks.picker and snacks.picker.close then
+          pcall(function()
+            snacks.picker.close()
+          end)
         end
       end,
     }
@@ -73,6 +90,7 @@ function M.open()
     return
   end
   local cfg = config.get()
+  local orig_buf = vim.api.nvim_get_current_buf()
 
   -- 1. Prompt selection
   local function select_prompt(cb)
@@ -123,6 +141,10 @@ function M.open()
           title = "nohands: select model",
           items = model_items,
           cb = function(model_value)
+            -- Restore original buffer before capturing content
+            if vim.api.nvim_buf_is_valid(orig_buf) then
+              vim.api.nvim_set_current_buf(orig_buf)
+            end
             actions.run {
               session = session_name,
               prompt = prompt_name,
@@ -130,6 +152,7 @@ function M.open()
               before = before,
               after = after,
               model = model_value,
+              bufnr = orig_buf,
             }
           end,
         }

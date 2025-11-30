@@ -71,6 +71,7 @@ function M.run(opts)
   local source_key = opts.source or "buffer"
   local cobj = (
     source_key == "surrounding" and content.surrounding(opts.before, opts.after)
+    or (source_key == "buffer" and content.buffer(opts.bufnr))
     or content.get(source_key, opts)
   )
   local session = sessions.get(opts.session)
