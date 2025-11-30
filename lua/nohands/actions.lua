@@ -97,12 +97,11 @@ function M.run(opts)
   for _, m in ipairs(messages) do
     table.insert(session.messages, m)
   end
-  vim.notify(
-    "nohands: querying model" .. (opts.stream and " (streaming)..." or "..."),
-    vim.log.levels.INFO
-  )
-
   local method = opts.output or cfg.output.method
+  if method == "replace" or method == "append" then
+    method = "split"
+  end
+
   if opts.stream then
     local acc = {}
     local acc_len = 0
