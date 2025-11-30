@@ -21,6 +21,9 @@
 ---@field user string
 ---@field transform? fun(content:string, ctx:table):string
 
+---@class NoHandsIndicatorOptions
+---@field enabled boolean
+
 ---@class NoHandsConfig
 ---@field model string
 ---@field temperature number
@@ -33,6 +36,7 @@
 ---@field diff table
 ---@field models table
 ---@field retry table
+---@field indicator NoHandsIndicatorOptions
 
 ---@class NoHandsRunOptions
 ---@field prompt? string
