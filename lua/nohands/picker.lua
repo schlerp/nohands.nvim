@@ -17,30 +17,31 @@ local function picker_select(opts)
   local picker = snacks.picker
   local items = opts.items or {}
 
-  -- Normalize items to {text=..., value=...}
-  local norm = {}
+  -- Represent items as plain display strings and keep a map for values.
+  local labels = {}
+  local values = {}
   for _, it in ipairs(items) do
-    local txt = it.text or it.value
-    norm[#norm + 1] = { text = txt, value = it.value or it.text }
+    local label = it.text or it.value
+    local value = it.value or it.text
+    labels[#labels + 1] = label
+    values[label] = value
   end
 
-  -- Use Snacks generic picker with an in-memory finder for fuzzy matching.
+  -- Use Snacks generic picker; plain strings avoid rendering issues.
   if type(picker.pick) == "function" then
     picker.pick {
       title = opts.title,
-      items = norm,
+      items = labels,
       preview = false,
       layout = { preset = "select" },
-      auto_confirm = #norm == 1,
-      format_item = function(item)
-        if type(item) == "string" then
-          return item
-        end
-        return item.text or tostring(item.value)
-      end,
+      auto_confirm = #labels == 1,
       confirm = function(p, item)
         if item then
-          opts.cb(item.value)
+          local label = type(item) == "string" and item or item.text
+          local value = values[label]
+          if value ~= nil then
+            opts.cb(value)
+          end
         end
         if p and p.close then
           pcall(function()
@@ -60,10 +61,13 @@ local function picker_select(opts)
   if picker.prompt then
     picker.prompt {
       title = opts.title,
-      items = norm,
+      items = labels,
       on_submit = function(sel)
         if sel then
-          opts.cb(sel.value)
+          local value = values[sel]
+          if value ~= nil then
+            opts.cb(value)
+          end
         end
       end,
     }

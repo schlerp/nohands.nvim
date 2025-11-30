@@ -69,7 +69,8 @@ local function write_output(method, text, incremental)
     else
       vim.cmd "split"
     end
-    local buf = vim.api.nvim_get_current_buf()
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_win_set_buf(0, buf)
     local lines = vim.split(text, "\n")
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
     vim.api.nvim_buf_set_option(buf, "filetype", "markdown")
