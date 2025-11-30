@@ -36,21 +36,29 @@ function M.chat(model, messages, user_opts)
   local attempts = (cfg.retry and cfg.retry.attempts) or 1
   local backoff = (cfg.retry and cfg.retry.backoff_ms) or 0
   local res
+  local last_err
   for i = 1, attempts do
-    res = curl.post(url, {
+    local ok, result = pcall(curl.post, url, {
       headers = headers(),
       body = vim.json.encode(body),
     })
+    if not ok then
+      last_err = result
+      res = nil
+    else
+      res = result
+    end
     if res and res.status == 200 then
       break
     end
-    if i < attempts then
-      if backoff > 0 then
-        vim.wait(backoff * i)
-      end
+    if i < attempts and backoff > 0 then
+      vim.wait(backoff * i)
     end
   end
   if not res or res.status ~= 200 then
+    if last_err and (not res or not res.status) then
+      return nil, "curl error: " .. tostring(last_err)
+    end
     return nil, "HTTP " .. tostring(res and res.status or "nil") .. "\n" .. (res and res.body or "")
   end
   local ok, data = pcall(vim.json.decode, res.body)

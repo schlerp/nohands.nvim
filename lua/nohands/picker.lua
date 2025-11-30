@@ -20,7 +20,8 @@ local function picker_select(opts)
   -- Normalize items to {text=..., value=...}
   local norm = {}
   for _, it in ipairs(items) do
-    norm[#norm + 1] = { text = it.text or it.value, value = it.value or it.text }
+    local txt = it.text or it.value
+    norm[#norm + 1] = { text = txt, value = it.value or it.text }
   end
 
   -- Use Snacks generic picker with an in-memory finder for fuzzy matching.
@@ -28,26 +29,6 @@ local function picker_select(opts)
     picker.pick {
       title = opts.title,
       items = norm,
-      finder = function(filter)
-        local q = ""
-        if type(filter) == "string" then
-          q = filter
-        elseif type(filter) == "table" then
-          q = filter.query or filter.text or ""
-        end
-        if q == "" then
-          return norm
-        end
-        local out = {}
-        local f = q:lower()
-        for _, it in ipairs(norm) do
-          local txt = type(it.text) == "string" and it.text or tostring(it.text)
-          if txt:lower():find(f, 1, true) then
-            out[#out + 1] = it
-          end
-        end
-        return out
-      end,
       preview = false,
       layout = { preset = "select" },
       auto_confirm = #norm == 1,
