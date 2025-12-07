@@ -103,6 +103,87 @@ M.sources = {
     end
     return { text = diff, meta = { type = "diff", path = filename } }
   end,
+  lsp_symbol = function(_opts)
+    local params = vim.lsp.util.make_range_params()
+    local bufnr = params.textDocument and vim.uri_to_bufnr(params.textDocument.uri)
+      or vim.api.nvim_get_current_buf()
+    local clients = vim.lsp.get_active_clients { bufnr = bufnr }
+    if #clients == 0 then
+      return M.buffer(bufnr)
+    end
+    local client = clients[1]
+    local ok, result = pcall(client.request_sync, client, "textDocument/documentSymbol", {
+      textDocument = { uri = vim.uri_from_bufnr(bufnr) },
+    }, 1000, bufnr)
+    if not ok or not result or not result.result then
+      return M.buffer(bufnr)
+    end
+    local symbols = result.result or {}
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local cur_line = cursor[1] - 1
+    local best
+    local function pick_from_range(range)
+      local s = range.start.line
+      local e = range["end"].line
+      if cur_line >= s and cur_line <= e then
+        if not best or (s >= best.start_line and e <= best.end_line) then
+          best = { start_line = s, end_line = e }
+        end
+      end
+    end
+    local function visit(list)
+      for _, item in ipairs(list or {}) do
+        if item.range then
+          pick_from_range(item.range)
+        end
+        if item.selectionRange then
+          pick_from_range(item.selectionRange)
+        end
+        if item.children then
+          visit(item.children)
+        end
+      end
+    end
+    visit(symbols)
+    if not best then
+      return M.buffer(bufnr)
+    end
+    return M.range(best.start_line, best.end_line)
+  end,
+  diagnostic = function(_opts)
+    local bufnr = vim.api.nvim_get_current_buf()
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local line = cursor[1] - 1
+    local diags = vim.diagnostic.get(bufnr, { lnum = line })
+    if #diags == 0 then
+      return M.buffer(bufnr)
+    end
+    local lines = {}
+    for _, d in ipairs(diags) do
+      lines[#lines + 1] = string.format("[%s] %s", d.severity or "", d.message or "")
+    end
+    return {
+      text = join_lines(lines),
+      meta = { type = "diagnostic", bufnr = bufnr, line = line },
+    }
+  end,
+  quickfix = function(_opts)
+    local items = vim.fn.getqflist() or {}
+    if #items == 0 then
+      return M.buffer()
+    end
+    local lines = {}
+    for _, it in ipairs(items) do
+      local lnum = it.lnum or 0
+      local col = it.col or 0
+      local text = it.text or ""
+      lines[#lines + 1] = string.format("%s:%d:%d: %s", it.filename or "", lnum, col, text)
+    end
+    return {
+      text = join_lines(lines),
+      meta = { type = "quickfix" },
+    }
+  end,
 }
 
 ---@param source string

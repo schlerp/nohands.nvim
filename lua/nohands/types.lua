@@ -20,6 +20,10 @@
 ---@field system? string
 ---@field user string
 ---@field transform? fun(content:string, ctx:table):string
+---@field tags? string[]
+---@field model? string
+---@field temperature? number
+---@field max_tokens? integer
 
 ---@class NoHandsConfig
 ---@field model string
@@ -36,7 +40,7 @@
 
 ---@class NoHandsRunOptions
 ---@field prompt? string
----@field source? 'buffer'|'selection'|'surrounding'|'diff'
+---@field source? 'buffer'|'selection'|'surrounding'|'diff'|'lsp_symbol'|'diagnostic'|'quickfix'
 ---@field before? integer
 ---@field after? integer
 ---@field model? string
@@ -66,7 +70,21 @@
 ---@field start_line integer
 ---@field end_line integer
 
----@alias NoHandsContentMeta NoHandsContentMetaBuffer|NoHandsContentMetaSelection|NoHandsContentMetaSurrounding|NoHandsContentMetaRange -- luacheck: ignore max_line_length
+---@class NoHandsContentMetaDiagnostic
+---@field type 'diagnostic'
+---@field bufnr integer
+---@field line integer
+
+---@class NoHandsContentMetaQuickfix
+---@field type 'quickfix'
+
+---@alias NoHandsContentMeta
+---| NoHandsContentMetaBuffer
+---| NoHandsContentMetaSelection
+---| NoHandsContentMetaSurrounding
+---| NoHandsContentMetaRange
+---| NoHandsContentMetaDiagnostic
+---| NoHandsContentMetaQuickfix
 
 ---@class NoHandsContent
 ---@field text string

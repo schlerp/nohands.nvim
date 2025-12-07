@@ -3,79 +3,9 @@ local prompts = require "nohands.prompts"
 local content = require "nohands.content"
 local api = require "nohands.api"
 local sessions = require "nohands.sessions"
+local output = require "nohands.output"
 
 local M = {}
-
-local function write_output(method, text, incremental)
-  -- For replace/append, ask before mutating the current buffer.
-  if method == "replace" or method == "append" then
-    local choice = vim.fn.confirm(
-      "nohands: apply response to current buffer?",
-      "&Yes\n&No (show in temp buffer)",
-      2
-    )
-    if choice ~= 1 then
-      method = "split"
-    end
-  end
-
-  if method == "replace" then
-    local mode = vim.fn.mode()
-    if mode:match "v" then
-      vim.cmd [[normal! gv]]
-      local _, sline, _, _ = unpack(vim.fn.getpos "'<")
-      local _, eline, _, _ = unpack(vim.fn.getpos "'>")
-      sline = sline - 1
-      eline = eline - 1
-      local new_lines = vim.split(text, "\n")
-      vim.api.nvim_buf_set_lines(0, sline, eline + 1, false, new_lines)
-      return
-    end
-    local line = vim.api.nvim_win_get_cursor(0)[1] - 1
-    local new_lines = vim.split(text, "\n")
-    vim.api.nvim_buf_set_lines(0, line, line + 1, false, new_lines)
-  elseif method == "append" then
-    local line = vim.api.nvim_win_get_cursor(0)[1]
-    local new_lines = vim.split(text, "\n")
-    vim.api.nvim_buf_set_lines(0, line, line, false, new_lines)
-  elseif method == "float" then
-    if incremental and incremental.buf then
-      local lines = vim.split(text, "\n")
-      vim.api.nvim_buf_set_lines(incremental.buf, 0, -1, false, lines)
-      return incremental
-    end
-    local buf = vim.api.nvim_create_buf(false, true)
-    local lines = vim.split(text, "\n")
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-    local width = math.min(math.max(60, math.floor(vim.o.columns * 0.6)), vim.o.columns - 4)
-    local height = math.min(#lines, math.floor(vim.o.lines * 0.7))
-    local row = math.floor((vim.o.lines - height) / 2 - 1)
-    local col = math.floor((vim.o.columns - width) / 2)
-    vim.api.nvim_open_win(buf, true, {
-      relative = "editor",
-      row = row,
-      col = col,
-      width = width,
-      height = height,
-      style = "minimal",
-      border = "rounded",
-    })
-    vim.api.nvim_buf_set_option(buf, "filetype", "markdown")
-    return { buf = buf }
-  else
-    local direction = config.get().output.split_direction
-    if direction == "right" then
-      vim.cmd "vsplit"
-    else
-      vim.cmd "split"
-    end
-    local buf = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_win_set_buf(0, buf)
-    local lines = vim.split(text, "\n")
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-    vim.api.nvim_buf_set_option(buf, "filetype", "markdown")
-  end
-end
 
 ---@param opts NoHandsRunOptions|nil
 function M.run(opts)
@@ -88,7 +18,9 @@ function M.run(opts)
     or content.get(source_key, opts)
   )
   local session = sessions.get(opts.session)
-  local messages, perr = prompts.render(opts.prompt or "explain", cobj.text, { meta = cobj.meta })
+  local prompt_name = opts.prompt or "explain"
+  local prompt_def = prompts.get(prompt_name)
+  local messages, perr = prompts.render(prompt_name, cobj.text, { meta = cobj.meta })
   if not messages then
     vim.notify("nohands: " .. perr, vim.log.levels.ERROR)
     return
@@ -102,6 +34,17 @@ function M.run(opts)
     method = "split"
   end
 
+  local effective_model = opts.model or (prompt_def and prompt_def.model) or cfg.model
+  local effective_temp = opts.temperature
+    or (prompt_def and prompt_def.temperature)
+    or cfg.temperature
+  local effective_max = opts.max_tokens or (prompt_def and prompt_def.max_tokens) or cfg.max_tokens
+
+  local user_opts = {
+    temperature = effective_temp,
+    max_tokens = effective_max,
+  }
+
   if opts.stream then
     local acc = {}
     local acc_len = 0
@@ -111,7 +54,7 @@ function M.run(opts)
     local function current_text()
       return table.concat(acc)
     end
-    api.chat_stream(opts.model or cfg.model, session.messages, opts, function(chunk)
+    api.chat_stream(effective_model, session.messages, user_opts, function(chunk)
       acc[#acc + 1] = chunk
       acc_len = acc_len + #chunk
       local maxc = cfg.stream and cfg.stream.max_accumulate or 16000
@@ -123,23 +66,23 @@ function M.run(opts)
       end
       local now = vim.loop.now()
       if (now - last_flush) >= flush_interval then
-        float_state = write_output(method, current_text(), float_state)
+        float_state = output.write(method, current_text(), float_state)
         last_flush = now
       end
     end, function(full)
       table.insert(session.messages, { role = "assistant", content = full })
-      write_output(method, full, float_state)
+      output.write(method, full, float_state)
     end, function(err)
       vim.notify("nohands stream error: " .. err, vim.log.levels.ERROR)
     end)
   else
-    local out, err = api.chat(opts.model or cfg.model, session.messages, opts)
+    local out, err = api.chat(effective_model, session.messages, user_opts)
     if not out then
       vim.notify("nohands error: " .. err, vim.log.levels.ERROR)
       return
     end
     table.insert(session.messages, { role = "assistant", content = out })
-    write_output(method, out)
+    output.write(method, out)
   end
 end
 

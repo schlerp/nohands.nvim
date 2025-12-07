@@ -68,6 +68,22 @@ local function picker_select(opts)
   end
 end
 
+local function build_palette_items()
+  local items = {}
+  local prompt_items = prompts.list()
+  for _, p in ipairs(prompt_items) do
+    local label
+    if type(p.tags) == "table" and #p.tags > 0 then
+      local tag_str = table.concat(p.tags, ",")
+      label = string.format("%s [%s] · buffer", p.name, tag_str)
+    else
+      label = string.format("%s · buffer", p.name)
+    end
+    items[#items + 1] = { text = label, value = p.name .. "::buffer" }
+  end
+  return items
+end
+
 ---@return nil
 function M.open()
   if not config.get().picker.use_snacks or not snacks_available() then
@@ -98,6 +114,9 @@ function M.open()
       { text = "selection", value = "selection" },
       { text = "surrounding (10/10)", value = "surrounding", before = 10, after = 10 },
       { text = "diff (git)", value = "diff" },
+      { text = "LSP symbol", value = "lsp_symbol" },
+      { text = "diagnostic", value = "diagnostic" },
+      { text = "quickfix list", value = "quickfix" },
     }
     picker_select {
       title = "nohands: select source",
@@ -174,6 +193,40 @@ function M.open()
   else
     start_flow(nil)
   end
+end
+
+---@return nil
+function M.palette()
+  if not config.get().picker.use_snacks or not snacks_available() then
+    vim.notify("nohands: Snacks picker disabled or not found", vim.log.levels.WARN)
+    return
+  end
+  local cfg = config.get()
+  local orig_buf = vim.api.nvim_get_current_buf()
+  local items = build_palette_items()
+  if #items == 0 then
+    vim.notify("nohands: no prompts configured", vim.log.levels.WARN)
+    return
+  end
+  picker_select {
+    title = "nohands: palette",
+    items = items,
+    cb = function(encoded)
+      local prompt_name, source = encoded:match "^(.-)::(.+)$"
+      if not prompt_name or prompt_name == "" or not source or source == "" then
+        return
+      end
+      if vim.api.nvim_buf_is_valid(orig_buf) then
+        vim.api.nvim_set_current_buf(orig_buf)
+      end
+      actions.run {
+        prompt = prompt_name,
+        source = source,
+        model = cfg.model,
+        bufnr = orig_buf,
+      }
+    end,
+  }
 end
 
 return M
