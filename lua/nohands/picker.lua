@@ -10,23 +10,44 @@ local function snacks_available()
 end
 
 -- Wrapper to create a simple value picker (non-file) using Snacks.
--- Falls back to the test stub (picker.prompt) in CI.
+-- Prefers Snacks.picker.select (vim.ui.select-style),
+-- and falls back to picker.pick or the test stub (picker.prompt) in CI.
 ---@param opts {title:string, items:table[], cb:fun(value:string)}
 local function picker_select(opts)
-  local snacks = require "snacks"
-  local picker = snacks.picker
+  local ok, snacks = pcall(require, "snacks")
   local items = opts.items or {}
 
   -- Normalize items to { text = label, value = actual }
   local norm = {}
   for _, it in ipairs(items) do
-    local label = it.text or it.value
-    local value = it.value or it.text
+    local label = it.text or it.value or tostring(it)
+    local value = it.value or it.text or it
     norm[#norm + 1] = { text = label, value = value }
   end
 
-  -- Use Snacks generic picker with explicit display text.
-  if type(picker.pick) == "function" then
+  if ok and snacks.picker and type(snacks.picker.select) == "function" then
+    snacks.picker.select(norm, {
+      prompt = opts.title,
+      format_item = function(item)
+        return item.text or tostring(item.value)
+      end,
+      snacks = {
+        layout = { preset = "select" },
+        auto_confirm = #norm == 1,
+      },
+    }, function(choice)
+      if not choice then
+        return
+      end
+      opts.cb(choice.value or choice.text or choice)
+    end)
+    return
+  end
+
+  local picker = ok and snacks.picker or nil
+
+  -- Fallback: use generic Snacks picker.pick when available.
+  if picker and type(picker.pick) == "function" then
     picker.pick {
       title = opts.title,
       items = norm,
@@ -36,18 +57,9 @@ local function picker_select(opts)
       format_item = function(item)
         return item.text or tostring(item.value)
       end,
-      confirm = function(p, item)
+      confirm = function(_, item)
         if item and (item.value or item.text) then
           opts.cb(item.value or item.text)
-        end
-        if p and p.close then
-          pcall(function()
-            p:close()
-          end)
-        elseif snacks.picker and snacks.picker.close then
-          pcall(function()
-            snacks.picker.close()
-          end)
         end
       end,
     }
@@ -55,7 +67,7 @@ local function picker_select(opts)
   end
 
   -- Fallback: test stub defined in tests/minimal_init.lua exposes picker.prompt
-  if picker.prompt then
+  if picker and picker.prompt then
     picker.prompt {
       title = opts.title,
       items = norm,
@@ -65,6 +77,22 @@ local function picker_select(opts)
         end
       end,
     }
+    return
+  end
+
+  -- Final fallback: use vim.ui.select directly.
+  if vim.ui and vim.ui.select then
+    vim.ui.select(norm, {
+      prompt = opts.title,
+      format_item = function(item)
+        return item.text or tostring(item.value)
+      end,
+    }, function(choice)
+      if not choice then
+        return
+      end
+      opts.cb(choice.value or choice.text or choice)
+    end)
   end
 end
 

@@ -7,12 +7,20 @@ local captured = {}
 -- picker_items_spec defines the Snacks stub; here we only observe
 package.loaded.snacks = {
   picker = {
-    pick = function(opts)
-      table.insert(captured, opts)
-      if opts.items and opts.items[1] and opts.confirm then
-        opts.confirm(nil, opts.items[1])
+    ---@param items any[]
+    ---@param opts table|nil
+    ---@param on_choice fun(item:any|nil)
+    select = function(items, opts, on_choice)
+      local rec = {
+        title = opts and opts.prompt or "",
+        items = items or {},
+      }
+      table.insert(captured, rec)
+      if items and items[1] and on_choice then
+        on_choice(items[1])
+      elseif on_choice then
+        on_choice(nil)
       end
-      return {}
     end,
   },
 }

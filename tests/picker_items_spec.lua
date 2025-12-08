@@ -18,15 +18,19 @@ local captured = {}
 package.preload["snacks"] = function()
   return {
     picker = {
-      pick = function(opts)
+      ---@param items any[]
+      ---@param opts table|nil
+      ---@param on_choice fun(item:any|nil)
+      select = function(items, opts, on_choice)
         table.insert(
           captured,
-          { title = opts.title, count = #(opts.items or {}), items = opts.items }
+          { title = opts and opts.prompt or "", count = #(items or {}), items = items }
         )
-        if opts.confirm and opts.items and opts.items[1] then
-          opts.confirm(nil, opts.items[1])
+        if items and items[1] and on_choice then
+          on_choice(items[1])
+        elseif on_choice then
+          on_choice(nil)
         end
-        return {}
       end,
     },
   }
