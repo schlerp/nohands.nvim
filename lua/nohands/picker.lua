@@ -9,12 +9,10 @@ local function snacks_available()
   return pcall(require, "snacks")
 end
 
--- Wrapper to create a simple value picker (non-file) using Snacks.
--- Prefers Snacks.picker.select (vim.ui.select-style),
--- and falls back to picker.pick or the test stub (picker.prompt) in CI.
+-- Wrapper to create a simple value picker (non-file).
+-- Uses vim.ui.select so Snacks (or any other plugin) can override it.
 ---@param opts {title:string, items:table[], cb:fun(value:string)}
 local function picker_select(opts)
-  local ok, snacks = pcall(require, "snacks")
   local items = opts.items or {}
 
   -- Normalize items to { text = label, value = actual }
@@ -25,75 +23,22 @@ local function picker_select(opts)
     norm[#norm + 1] = { text = label, value = value }
   end
 
-  if ok and snacks.picker and type(snacks.picker.select) == "function" then
-    snacks.picker.select(norm, {
-      prompt = opts.title,
-      format_item = function(item)
-        return item.text or tostring(item.value)
-      end,
-      snacks = {
-        layout = { preset = "select" },
-        auto_confirm = #norm == 1,
-      },
-    }, function(choice)
-      if not choice then
-        return
-      end
-      opts.cb(choice.value or choice.text or choice)
-    end)
+  if not (vim.ui and vim.ui.select) then
+    vim.notify("nohands: vim.ui.select is not available", vim.log.levels.ERROR)
     return
   end
 
-  local picker = ok and snacks.picker or nil
-
-  -- Fallback: use generic Snacks picker.pick when available.
-  if picker and type(picker.pick) == "function" then
-    picker.pick {
-      title = opts.title,
-      items = norm,
-      preview = false,
-      layout = { preset = "select" },
-      auto_confirm = #norm == 1,
-      format_item = function(item)
-        return item.text or tostring(item.value)
-      end,
-      confirm = function(_, item)
-        if item and (item.value or item.text) then
-          opts.cb(item.value or item.text)
-        end
-      end,
-    }
-    return
-  end
-
-  -- Fallback: test stub defined in tests/minimal_init.lua exposes picker.prompt
-  if picker and picker.prompt then
-    picker.prompt {
-      title = opts.title,
-      items = norm,
-      on_submit = function(sel)
-        if sel and (sel.value or sel.text) then
-          opts.cb(sel.value or sel.text)
-        end
-      end,
-    }
-    return
-  end
-
-  -- Final fallback: use vim.ui.select directly.
-  if vim.ui and vim.ui.select then
-    vim.ui.select(norm, {
-      prompt = opts.title,
-      format_item = function(item)
-        return item.text or tostring(item.value)
-      end,
-    }, function(choice)
-      if not choice then
-        return
-      end
-      opts.cb(choice.value or choice.text or choice)
-    end)
-  end
+  vim.ui.select(norm, {
+    prompt = opts.title,
+    format_item = function(item)
+      return item.text or tostring(item.value)
+    end,
+  }, function(choice)
+    if not choice then
+      return
+    end
+    opts.cb(choice.value or choice.text or choice)
+  end)
 end
 
 local function build_palette_items()
