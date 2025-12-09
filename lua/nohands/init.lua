@@ -24,6 +24,56 @@ function M.setup(opts)
   M.config = config.get()
   -- load persisted sessions if present
   pcall(sessions.load)
+
+  -- default keymaps (configurable via `keys` table)
+  local keys = M.config.keys or {}
+  local map = vim.keymap.set
+  local base_opts = { noremap = true }
+
+  if keys.nohands ~= false then
+    map("n", keys.nohands or "<leader>nn", "<cmd>NoHands<CR>", base_opts)
+  end
+  if keys.run ~= false then
+    local run_key = keys.run or "<leader>nr"
+    map("n", run_key, function()
+      actions.run { prompt = "explain", stateless = true }
+    end, base_opts)
+    map("v", run_key, function()
+      actions.run { prompt = "explain", source = "selection", stateless = true }
+    end, base_opts)
+  end
+  if keys.stream ~= false then
+    local stream_key = keys.stream or "<leader>ns"
+    map("n", stream_key, function()
+      actions.run {
+        prompt = "explain",
+        stream = true,
+        output = "float",
+        stateless = true,
+      }
+    end, base_opts)
+    map("v", stream_key, function()
+      actions.run {
+        prompt = "explain",
+        stream = true,
+        output = "float",
+        source = "selection",
+        stateless = true,
+      }
+    end, base_opts)
+  end
+  if keys.refactor ~= false then
+    local refactor_key = keys.refactor or "<leader>ni"
+    map("n", refactor_key, function()
+      actions.run { prompt = "refactor", stateless = true }
+    end, base_opts)
+    map("v", refactor_key, function()
+      actions.run { prompt = "refactor", source = "selection", stateless = true }
+    end, base_opts)
+  end
+  if keys.palette ~= false then
+    map("n", keys.palette or "<leader>np", "<cmd>NoHandsPalette<CR>", base_opts)
+  end
   vim.api.nvim_create_autocmd("VimLeavePre", {
     callback = function()
       pcall(sessions.save)
@@ -36,14 +86,43 @@ function M.setup(opts)
     picker.palette()
   end, {})
   vim.api.nvim_create_user_command("NoHandsRun", function(cmd_opts)
-    actions.run { prompt = cmd_opts.args ~= "" and cmd_opts.args or "explain" }
+    local prompt_name = cmd_opts.args ~= "" and cmd_opts.args or "explain"
+    local mode = vim.fn.mode()
+    local source
+    if mode:match "v" then
+      source = "selection"
+    end
+    local prompt_def = prompts.get(prompt_name)
+    local cfg_now = config.get()
+    local model = (prompt_def and prompt_def.model) or cfg_now.model
+    local status = string.format("nohands: requesting %s (%s)...", model, prompt_name)
+    vim.api.nvim_echo({ { status, "ModeMsg" } }, false, {})
+    vim.cmd "redraw"
+    vim.schedule(function()
+      actions.run { prompt = prompt_name, source = source, output = "float" }
+    end)
   end, { nargs = "?" })
   vim.api.nvim_create_user_command("NoHandsStream", function(cmd_opts)
-    actions.run {
-      prompt = cmd_opts.args ~= "" and cmd_opts.args or "explain",
-      stream = true,
-      output = "float",
-    }
+    local prompt_name = cmd_opts.args ~= "" and cmd_opts.args or "explain"
+    local mode = vim.fn.mode()
+    local source
+    if mode:match "v" then
+      source = "selection"
+    end
+    local prompt_def = prompts.get(prompt_name)
+    local cfg_now = config.get()
+    local model = (prompt_def and prompt_def.model) or cfg_now.model
+    local status = string.format("nohands: streaming %s (%s)...", model, prompt_name)
+    vim.api.nvim_echo({ { status, "ModeMsg" } }, false, {})
+    vim.cmd "redraw"
+    vim.schedule(function()
+      actions.run {
+        prompt = prompt_name,
+        stream = true,
+        output = "split",
+        source = source,
+      }
+    end)
   end, { nargs = "?" })
   vim.api.nvim_create_user_command("NoHandsSessions", function()
     local names = {}

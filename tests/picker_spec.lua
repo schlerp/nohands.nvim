@@ -12,7 +12,7 @@ describe("picker", function()
       max_tokens = 5,
       openrouter = { base_url = "x", api_key_env = "OPENROUTER_API_KEY" },
       output = { method = "split", split_direction = "below" },
-      picker = { use_snacks = true, session_first = false },
+      picker = { session_first = false },
       stream = { max_accumulate = 16000, flush_interval_ms = 50 },
       diff = { write_before = false, unified = 3, async = false },
       models = { cache_ttl = 1 },

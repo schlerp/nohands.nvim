@@ -5,10 +5,6 @@ local actions = require "nohands.actions"
 
 local M = {}
 
-local function snacks_available()
-  return pcall(require, "snacks")
-end
-
 -- Wrapper to create a simple value picker (non-file).
 -- Uses vim.ui.select so Snacks (or any other plugin) can override it.
 ---@param opts {title:string, items:table[], cb:fun(value:string)}
@@ -59,10 +55,6 @@ end
 
 ---@return nil
 function M.open()
-  if not config.get().picker.use_snacks or not snacks_available() then
-    vim.notify("nohands: Snacks picker disabled or not found", vim.log.levels.WARN)
-    return
-  end
   local cfg = config.get()
   local orig_buf = vim.api.nvim_get_current_buf()
 
@@ -170,10 +162,6 @@ end
 
 ---@return nil
 function M.palette()
-  if not config.get().picker.use_snacks or not snacks_available() then
-    vim.notify("nohands: Snacks picker disabled or not found", vim.log.levels.WARN)
-    return
-  end
   local cfg = config.get()
   local orig_buf = vim.api.nvim_get_current_buf()
   local items = build_palette_items()

@@ -23,22 +23,38 @@ end
 ---@return NoHandsContent
 function M.selection()
   local mode = vim.fn.mode()
-  if not mode:match "v" then
-    return M.buffer()
+  local spos
+  local epos
+  if mode:match "v" then
+    spos = vim.fn.getpos "v"
+    epos = vim.fn.getpos "."
+  else
+    spos = vim.fn.getpos "'<"
+    epos = vim.fn.getpos "'>"
   end
-  local _, start_line, start_col, _ = unpack(vim.fn.getpos "'<")
-  local _, end_line, end_col, _ = unpack(vim.fn.getpos "'>")
-  start_line = start_line - 1
-  end_line = end_line - 1
+  local _, sline, scol, _ = unpack(spos)
+  local _, eline, ecol, _ = unpack(epos)
+
+  -- Normalize so start <= end in buffer order
+  if sline > eline or (sline == eline and scol > ecol) then
+    sline, eline = eline, sline
+    scol, ecol = ecol, scol
+  end
+
+  local start_line = sline - 1
+  local end_line = eline - 1
   local lines = vim.api.nvim_buf_get_lines(0, start_line, end_line + 1, false)
   if #lines == 0 then
-    return M.buffer()
+    return {
+      text = "",
+      meta = { type = "selection", range = { start_line = start_line, end_line = end_line } },
+    }
   end
   if #lines == 1 then
-    lines[1] = string.sub(lines[1], start_col, end_col)
+    lines[1] = string.sub(lines[1], scol, ecol)
   else
-    lines[1] = string.sub(lines[1], start_col)
-    lines[#lines] = string.sub(lines[#lines], 1, end_col)
+    lines[1] = string.sub(lines[1], scol)
+    lines[#lines] = string.sub(lines[#lines], 1, ecol)
   end
   return {
     text = join_lines(lines),

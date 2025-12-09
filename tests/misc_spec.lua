@@ -14,7 +14,7 @@ describe("init module", function()
       max_tokens = 10,
       openrouter = { base_url = "https://example", api_key_env = "OPENROUTER_API_KEY" },
       output = { method = "split", split_direction = "below" },
-      picker = { use_snacks = false, session_first = false },
+      picker = { session_first = false },
       stream = { max_accumulate = 16000, flush_interval_ms = 120 },
       diff = { write_before = true, unified = 3, async = false },
       models = { cache_ttl = 60 },

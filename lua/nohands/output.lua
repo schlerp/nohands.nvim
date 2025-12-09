@@ -51,7 +51,10 @@ function M.write(method, text, incremental)
     local lines = vim.split(text, "\n")
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
     local width = math.min(math.max(60, math.floor(vim.o.columns * 0.6)), vim.o.columns - 4)
-    local height = math.min(#lines, math.floor(vim.o.lines * 0.7))
+    local height = math.floor(vim.o.lines * 0.8)
+    if height < 3 then
+      height = 3
+    end
     local row = math.floor((vim.o.lines - height) / 2 - 1)
     local col = math.floor((vim.o.columns - width) / 2)
     vim.api.nvim_open_win(buf, true, {
@@ -67,17 +70,42 @@ function M.write(method, text, incremental)
     return { buf = buf }
   else
     local direction = config.get().output.split_direction
+
+    if
+      incremental
+      and incremental.buf
+      and incremental.win
+      and vim.api.nvim_buf_is_valid(incremental.buf)
+      and vim.api.nvim_win_is_valid(incremental.win)
+    then
+      local lines = vim.split(text, "\n")
+      vim.api.nvim_buf_set_lines(incremental.buf, 0, -1, false, lines)
+      vim.api.nvim_buf_set_option(incremental.buf, "filetype", "markdown")
+      vim.api.nvim_win_set_cursor(incremental.win, { 1, 0 })
+      return incremental
+    end
+
     if direction == "right" then
-      vim.cmd "vsplit"
+      local old_splitright = vim.o.splitright
+      if not old_splitright then
+        vim.o.splitright = true
+      end
+      local ok, err = pcall(vim.cmd, "vsplit")
+      vim.o.splitright = old_splitright
+      if not ok then
+        error(err)
+      end
     else
       vim.cmd "split"
     end
+    local win = vim.api.nvim_get_current_win()
     local buf = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_win_set_buf(0, buf)
+    vim.api.nvim_win_set_buf(win, buf)
     local lines = vim.split(text, "\n")
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
     vim.api.nvim_buf_set_option(buf, "filetype", "markdown")
-    return nil
+    vim.api.nvim_win_set_cursor(win, { 1, 0 })
+    return { buf = buf, win = win }
   end
 end
 

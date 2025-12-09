@@ -84,7 +84,19 @@ function M.render(prompt_name, content, ctx)
       processed = newc
     end
   end
+
+  -- Wrap content in a fenced code block with an appropriate language
+  local lang
+  if ctx and ctx.meta and ctx.meta.type == "diff" then
+    lang = "diff"
+  else
+    lang = vim.bo.filetype or ""
+  end
+  local fence_open = lang ~= "" and ("```" .. lang) or "```"
+  processed = fence_open .. "\n" .. processed .. "\n```"
+
   local user_text = (tmpl.user or "${content}"):gsub("${content}", processed)
+
   local messages = {}
   if tmpl.system then
     table.insert(messages, { role = "system", content = tmpl.system })

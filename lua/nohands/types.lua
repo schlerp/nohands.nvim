@@ -12,8 +12,14 @@
 ---@field split_direction 'below'|'right'
 
 ---@class NoHandsPickerOptions
----@field use_snacks boolean
 ---@field session_first boolean
+
+---@class NoHandsKeysOptions
+---@field nohands? string
+---@field run? string
+---@field stream? string
+---@field refactor? string
+---@field palette? string
 
 ---@class NoHandsPromptTemplate
 ---@field name string
@@ -25,6 +31,9 @@
 ---@field temperature? number
 ---@field max_tokens? integer
 
+---@class NoHandsUsageOptions
+---@field notify boolean
+
 ---@class NoHandsConfig
 ---@field model string
 ---@field temperature number
@@ -33,10 +42,12 @@
 ---@field prompts table<string, NoHandsPromptTemplate>
 ---@field output NoHandsOutputOptions
 ---@field picker NoHandsPickerOptions
+---@field keys? NoHandsKeysOptions
 ---@field stream table
 ---@field diff table
 ---@field models table
 ---@field retry table
+---@field usage NoHandsUsageOptions
 
 ---@class NoHandsRunOptions
 ---@field prompt? string
@@ -49,6 +60,7 @@
 ---@field max_tokens? integer
 ---@field stream? boolean
 ---@field session? string
+---@field stateless? boolean
 
 ---@class NoHandsContentMetaBuffer
 ---@field type 'buffer'

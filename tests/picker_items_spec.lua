@@ -4,6 +4,9 @@ package.preload["nohands.api"] = function()
     chat = function(_, messages)
       return "stub-response for " .. #messages .. " messages"
     end,
+    chat_async = function(_model, _messages, _opts, on_success, _on_error)
+      on_success("stub-async-response", nil)
+    end,
     chat_stream = function() end,
     list_models = function()
       return { "modelA", "modelB" }
@@ -13,27 +16,20 @@ end
 
 local config = require "nohands.config"
 
--- Capture items from Snacks picker
+-- Capture items from vim.ui.select
 local captured = {}
-package.preload["snacks"] = function()
-  return {
-    picker = {
-      ---@param items any[]
-      ---@param opts table|nil
-      ---@param on_choice fun(item:any|nil)
-      select = function(items, opts, on_choice)
-        table.insert(
-          captured,
-          { title = opts and opts.prompt or "", count = #(items or {}), items = items }
-        )
-        if items and items[1] and on_choice then
-          on_choice(items[1])
-        elseif on_choice then
-          on_choice(nil)
-        end
-      end,
-    },
-  }
+
+vim.ui.select = function(items, opts, on_choice)
+  table.insert(captured, {
+    title = opts and opts.prompt or "",
+    count = #(items or {}),
+    items = items,
+  })
+  if items and items[1] and on_choice then
+    on_choice(items[1])
+  elseif on_choice then
+    on_choice(nil)
+  end
 end
 
 local picker = require "nohands.picker"
@@ -47,7 +43,7 @@ describe("picker items visibility", function()
       max_tokens = 5,
       openrouter = { base_url = "x", api_key_env = "OPENROUTER_API_KEY" },
       output = { method = "split", split_direction = "below" },
-      picker = { use_snacks = true, session_first = false },
+      picker = { session_first = false },
       stream = { max_accumulate = 16000, flush_interval_ms = 50 },
       diff = { write_before = false, unified = 3, async = false },
       models = { cache_ttl = 1 },

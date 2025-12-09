@@ -13,10 +13,9 @@ local defaults = {
   prompts = {},
   output = {
     method = "split",
-    split_direction = "below",
+    split_direction = "right",
   },
   picker = {
-    use_snacks = true,
     session_first = false, -- if true picker starts with session selection
   },
   stream = {
@@ -26,7 +25,6 @@ local defaults = {
   diff = {
     write_before = true, -- write buffer before diff to compare with disk
     unified = 3, -- number of context lines
-    async = false, -- if true use async system call for diff
   },
   models = {
     cache_ttl = 300, -- seconds to cache list_models results
@@ -34,6 +32,9 @@ local defaults = {
   retry = {
     attempts = 2, -- number of retry attempts for chat
     backoff_ms = 200, -- base backoff milliseconds
+  },
+  usage = {
+    notify = true,
   },
 }
 

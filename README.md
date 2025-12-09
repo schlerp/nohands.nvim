@@ -50,8 +50,37 @@ require('nohands').setup({
 - `:NoHandsRun [prompt]` Run immediately with default source (buffer) and optional prompt name.
 - `:NoHandsStream [prompt]` Stream model output into floating window.
 - `:NoHandsApplyDiff` Apply a unified diff currently displayed in buffer to the original file (single-file patch).
+ 
+## Keymaps
+By default, `setup()` defines a small set of keymaps (all configurable or disableable via the `keys` table in the config):
+
+- Normal mode
+  - `<leader>nn` → `:NoHands` (main picker)
+  - `<leader>nr` → `:NoHandsRun` (buffer)
+  - `<leader>ns` → `:NoHandsStream` (buffer, output in float)
+  - `<leader>np` → `:NoHandsPalette`
+- Visual mode
+  - `<leader>nr` → `:NoHandsRun` (selection)
+  - `<leader>ns` → `:NoHandsStream` (selection, output in float)
+
+You can change or disable these by passing a `keys` table to `setup`:
+
+```lua
+require('nohands').setup({
+  keys = {
+    -- change only the main picker key
+    nohands = '<leader>an',
+
+    -- disable a specific mapping by setting it to false
+    run = false,
+    stream = false,
+    palette = false,
+  },
+})
+```
 
 ## Lua API
+
 ```lua
 local nh = require('nohands')
 nh.run({ prompt = 'refactor', source = 'selection', model = 'openai/gpt-4o-mini' })
@@ -98,7 +127,14 @@ require('nohands').setup({
   },
   prompts = {}, -- custom prompt map
   output = { method = 'split', split_direction = 'below' },
-  picker = { use_snacks = true, session_first = false },
+  picker = { session_first = false },
+  -- default keymaps (set to false to disable, or change the lhs)
+  keys = {
+    nohands = '<leader>nn',
+    run = '<leader>nr',
+    stream = '<leader>ns',
+    palette = '<leader>np',
+  },
   stream = { max_accumulate = 16000, flush_interval_ms = 120 },
   diff = { write_before = true, unified = 3, async = false },
   models = { cache_ttl = 300 },
