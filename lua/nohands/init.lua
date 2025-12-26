@@ -74,6 +74,12 @@ function M.setup(opts)
   if keys.palette ~= false then
     map("n", keys.palette or "<leader>np", "<cmd>NoHandsPalette<CR>", base_opts)
   end
+  if keys.logs ~= false then
+    map("n", keys.logs or "<leader>nl", "<cmd>NoHandsLogs<CR>", base_opts)
+  end
+  if keys.history ~= false then
+    map("n", keys.history or "<leader>nh", "<cmd>NoHandsHistory<CR>", base_opts)
+  end
   vim.api.nvim_create_autocmd("VimLeavePre", {
     callback = function()
       pcall(sessions.save)
@@ -159,6 +165,12 @@ function M.setup(opts)
   vim.api.nvim_create_user_command("NoHandsApplyDiff", function()
     local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
     require("nohands.apply").apply_unified(table.concat(lines, "\n"))
+  end, {})
+  vim.api.nvim_create_user_command("NoHandsLogs", function()
+    require("nohands.logger").view_logs()
+  end, {})
+  vim.api.nvim_create_user_command("NoHandsHistory", function()
+    require("nohands.logger").view_history()
   end, {})
   vim.api.nvim_create_user_command("NoHandsHealth", function()
     require("nohands.health").check()
