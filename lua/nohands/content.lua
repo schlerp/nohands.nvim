@@ -1,22 +1,28 @@
 -- Types centralised in types.lua
+local utils = require "nohands.utils"
 
 local M = {}
 
+---@param lines string[]
+---@return string
 local function join_lines(lines)
-  return table.concat(lines, "\n")
+  return utils.join_lines(lines)
 end
 
----@param bufnr? integer
+---@param bufferHandle? integer
 ---@return NoHandsContent
-function M.buffer(bufnr)
-  if type(bufnr) ~= "number" or not vim.api.nvim_buf_is_valid(bufnr or -1) then
-    bufnr = vim.api.nvim_get_current_buf()
+function M.buffer(bufferHandle)
+  local validBufferHandle = bufferHandle
+  if type(validBufferHandle) ~= "number" or not vim.api.nvim_buf_is_valid(validBufferHandle) then
+    validBufferHandle = vim.api.nvim_get_current_buf()
   end
-  bufnr = bufnr or vim.api.nvim_get_current_buf()
-  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+  local bufferLines = vim.api.nvim_buf_get_lines(validBufferHandle, 0, -1, false)
+  local bufferName = vim.api.nvim_buf_get_name(validBufferHandle)
+
   return {
-    text = join_lines(lines),
-    meta = { type = "buffer", bufnr = bufnr, path = vim.api.nvim_buf_get_name(bufnr) },
+    text = join_lines(bufferLines),
+    meta = { type = "buffer", bufnr = validBufferHandle, path = bufferName },
   }
 end
 
@@ -25,7 +31,7 @@ function M.selection()
   local mode = vim.fn.mode()
   local spos
   local epos
-  if mode:match "v" then
+  if utils.is_visual_mode() then
     spos = vim.fn.getpos "v"
     epos = vim.fn.getpos "."
   else
@@ -41,13 +47,24 @@ function M.selection()
     scol, ecol = ecol, scol
   end
 
+  -- If in active linewise visual mode, expand columns to full line
+  if mode == "V" then
+    scol = 1
+    ecol = 2147483647
+  end
+
   local start_line = sline - 1
   local end_line = eline - 1
   local lines = vim.api.nvim_buf_get_lines(0, start_line, end_line + 1, false)
   if #lines == 0 then
     return {
       text = "",
-      meta = { type = "selection", range = { start_line = start_line, end_line = end_line } },
+      meta = {
+        type = "selection",
+        range = { start_line = start_line, end_line = end_line },
+        col_start = scol,
+        col_end = ecol,
+      },
     }
   end
   if #lines == 1 then
@@ -58,7 +75,12 @@ function M.selection()
   end
   return {
     text = join_lines(lines),
-    meta = { type = "selection", range = { start_line = start_line, end_line = end_line } },
+    meta = {
+      type = "selection",
+      range = { start_line = start_line, end_line = end_line },
+      col_start = scol,
+      col_end = ecol,
+    },
   }
 end
 
@@ -90,6 +112,7 @@ function M.range(start_line, end_line)
   }
 end
 
+---@type table<string, fun(opts: table): NoHandsContent>
 M.sources = {
   buffer = M.buffer,
   selection = M.selection,

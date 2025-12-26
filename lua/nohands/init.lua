@@ -65,10 +65,10 @@ function M.setup(opts)
   if keys.refactor ~= false then
     local refactor_key = keys.refactor or "<leader>ni"
     map("n", refactor_key, function()
-      actions.run { prompt = "refactor", stateless = true }
+      actions.run { prompt = "refactor", output = "diff", stateless = true }
     end, base_opts)
     map("v", refactor_key, function()
-      actions.run { prompt = "refactor", source = "selection", stateless = true }
+      actions.run { prompt = "refactor", source = "selection", output = "diff", stateless = true }
     end, base_opts)
   end
   if keys.palette ~= false then

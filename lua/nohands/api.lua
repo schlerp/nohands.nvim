@@ -1,24 +1,9 @@
 local config = require "nohands.config"
+local utils = require "nohands.utils"
 local curl = require "plenary.curl"
 local M = {}
 
 local _models_cache = { time = 0, list = {} }
-
-local function headers()
-  local opts = config.get().openrouter
-  local key = vim.env[config.get().openrouter.api_key_env]
-  local h = {
-    Authorization = "Bearer " .. (key or ""),
-    ["Content-Type"] = "application/json",
-  }
-  if opts.referer then
-    h["HTTP-Referer"] = opts.referer
-  end
-  if opts.title then
-    h["X-Title"] = opts.title
-  end
-  return h
-end
 
 ---@param model string|nil
 ---@param messages table
@@ -39,7 +24,7 @@ function M.chat(model, messages, user_opts)
   local last_err
   for i = 1, attempts do
     local ok, result = pcall(curl.post, url, {
-      headers = headers(),
+      headers = utils.get_api_headers(),
       body = vim.json.encode(body),
     })
     if not ok then
@@ -92,18 +77,10 @@ function M.chat_async(model, messages, user_opts, on_success, on_error)
     "-X",
     "POST",
     url,
-    "-H",
-    "Authorization: Bearer " .. (vim.env[cfg.openrouter.api_key_env] or ""),
-    "-H",
-    "Content-Type: application/json",
   }
-  if cfg.openrouter.referer then
-    table.insert(cmd, "-H")
-    table.insert(cmd, "HTTP-Referer: " .. cfg.openrouter.referer)
-  end
-  if cfg.openrouter.title then
-    table.insert(cmd, "-H")
-    table.insert(cmd, "X-Title: " .. cfg.openrouter.title)
+  local header_args = utils.get_curl_header_args()
+  for _, h in ipairs(header_args) do
+    table.insert(cmd, h)
   end
   table.insert(cmd, "-d")
   table.insert(cmd, vim.json.encode(body))
@@ -152,18 +129,10 @@ function M.chat_stream(model, messages, user_opts, on_chunk, on_finish, on_error
     "-X",
     "POST",
     url,
-    "-H",
-    "Authorization: Bearer " .. (vim.env[cfg.openrouter.api_key_env] or ""),
-    "-H",
-    "Content-Type: application/json",
   }
-  if cfg.openrouter.referer then
-    table.insert(cmd, "-H")
-    table.insert(cmd, "HTTP-Referer: " .. cfg.openrouter.referer)
-  end
-  if cfg.openrouter.title then
-    table.insert(cmd, "-H")
-    table.insert(cmd, "X-Title: " .. cfg.openrouter.title)
+  local header_args = utils.get_curl_header_args()
+  for _, h in ipairs(header_args) do
+    table.insert(cmd, h)
   end
   table.insert(cmd, "-d")
   table.insert(cmd, vim.json.encode(body))
@@ -215,7 +184,7 @@ function M.list_models(cb)
 
   -- Use vim.schedule to ensure cb is called on main thread
   curl.get(url, {
-    headers = headers(),
+    headers = utils.get_api_headers(),
     callback = function(res)
       vim.schedule(function()
         if not res or res.status ~= 200 then

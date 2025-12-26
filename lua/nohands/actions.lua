@@ -4,9 +4,12 @@ local content = require "nohands.content"
 local api = require "nohands.api"
 local sessions = require "nohands.sessions"
 local output = require "nohands.output"
+local utils = require "nohands.utils"
 
 local M = {}
 
+---@param messages table[]
+---@return string|nil
 local function latest_user_text(messages)
   for i = #messages, 1, -1 do
     local m = messages[i]
@@ -17,6 +20,9 @@ local function latest_user_text(messages)
   return nil
 end
 
+---@param prompt_name string
+---@param request_text string|nil
+---@return string
 local function format_header(prompt_name, request_text)
   local lines = {}
 
@@ -29,9 +35,13 @@ local function format_header(prompt_name, request_text)
   lines[#lines + 1] = "### Response"
   lines[#lines + 1] = ""
 
-  return table.concat(lines, "\n")
+  return utils.join_lines(lines)
 end
 
+---@param prompt_name string
+---@param request_text string|nil
+---@param reply_text string|nil
+---@return string
 local function format_full(prompt_name, request_text, reply_text)
   local header = format_header(prompt_name, request_text)
   if not reply_text or reply_text == "" then
@@ -40,6 +50,8 @@ local function format_full(prompt_name, request_text, reply_text)
   return header .. reply_text
 end
 
+---@param usage table|nil
+---@param model string|nil
 local function notify_usage(usage, model)
   local cfg = config.get()
   if not (cfg.usage and cfg.usage.notify) then
@@ -70,8 +82,7 @@ function M.run(opts)
   local cfg = config.get()
   local source_key = opts.source
   if not source_key then
-    local mode = vim.fn.mode()
-    if mode:match "v" then
+    if utils.is_visual_mode() then
       source_key = "selection"
     else
       source_key = "buffer"
@@ -164,8 +175,13 @@ function M.run(opts)
     )
     api.chat_async(effective_model, session.messages, user_opts, function(out, usage)
       table.insert(session.messages, { role = "assistant", content = out })
-      local display = format_full(prompt_name, request_text, out)
-      output.write(method, display)
+      local display
+      if opts.output == "diff" then
+        display = out -- for diff mode we just want the raw model output
+      else
+        display = format_full(prompt_name, request_text, out)
+      end
+      output.write(method, display, nil, cobj.meta)
       notify_usage(usage, effective_model)
     end, function(err)
       vim.notify("Error: " .. err, vim.log.levels.ERROR, { title = "nohands.nvim" })

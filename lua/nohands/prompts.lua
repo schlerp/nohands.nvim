@@ -6,7 +6,10 @@ M.builtin = {
   refactor = {
     name = "refactor",
     system = "You are an expert software engineer improving code quality.",
-    user = "Refactor the following code for clarity and performance. Preserve behavior.\n\n${content}",
+    user = "Refactor the following code for clarity and performance. Preserve behavior.\n"
+      .. "You should improve variable names, simplify logic, and enhance structure where possible.\n"
+      .. "Consider 3 different ways to refactor this code, and then choose the best option.\n"
+      .. "Return ONLY the refactored code block (e.g. ```lua ... ```). Do not include any explanation.\n\n${content}",
   },
   explain = {
     name = "explain",
@@ -38,15 +41,18 @@ M.builtin = {
 }
 
 local function merge_prompts()
-  local user = config.get().prompts or {}
-  local merged = {}
-  for k, v in pairs(M.builtin) do
-    merged[k] = v
+  local user_prompts = config.get().prompts or {}
+  local merged_prompts = {}
+
+  for key, value in pairs(M.builtin) do
+    merged_prompts[key] = value
   end
-  for k, v in pairs(user) do
-    merged[k] = v
+
+  for key, value in pairs(user_prompts) do
+    merged_prompts[key] = value
   end
-  return merged
+
+  return merged_prompts
 end
 
 ---@return NoHandsPromptTemplate[]

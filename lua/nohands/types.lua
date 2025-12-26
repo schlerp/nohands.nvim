@@ -8,7 +8,7 @@
 ---@field title? string
 
 ---@class NoHandsOutputOptions
----@field method 'split'|'append'|'replace'|'float'
+---@field method 'split'|'append'|'replace'|'float'|'diff'
 ---@field split_direction 'below'|'right'
 
 ---@class NoHandsPickerOptions
@@ -55,7 +55,7 @@
 ---@field before? integer
 ---@field after? integer
 ---@field model? string
----@field output? 'split'|'append'|'replace'|'float'
+---@field output? 'split'|'append'|'replace'|'float'|'diff'
 ---@field temperature? number
 ---@field max_tokens? integer
 ---@field stream? boolean
