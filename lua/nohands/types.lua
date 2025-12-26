@@ -48,6 +48,7 @@
 ---@field models table
 ---@field retry table
 ---@field usage NoHandsUsageOptions
+---@field language_instructions? table<string, string>
 
 ---@class NoHandsRunOptions
 ---@field prompt? string
