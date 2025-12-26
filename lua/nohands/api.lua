@@ -203,31 +203,42 @@ function M.chat_stream(model, messages, user_opts, on_chunk, on_finish, on_error
   end)
 end
 
-function M.list_models()
+function M.list_models(cb)
   local cfg = config.get()
   local ttl = (cfg.models and cfg.models.cache_ttl) or 300
   local now = vim.loop.now() / 1000 -- seconds
   if (_models_cache.time + ttl) > now and #_models_cache.list > 0 then
-    return _models_cache.list
+    cb(_models_cache.list)
+    return
   end
   local url = cfg.openrouter.base_url .. "/models"
-  local ok, res = pcall(curl.get, url, { headers = headers() })
-  if not ok or not res or res.status ~= 200 then
-    return _models_cache.list -- return cached (maybe empty)
-  end
-  local okj, data = pcall(vim.json.decode, res.body)
-  if not okj or type(data) ~= "table" then
-    return _models_cache.list
-  end
-  local out = {}
-  for _, m in ipairs(data.data or {}) do
-    if m.id then
-      out[#out + 1] = m.id
-    end
-  end
-  table.sort(out)
-  _models_cache = { time = now, list = out }
-  return out
+
+  -- Use vim.schedule to ensure cb is called on main thread
+  curl.get(url, {
+    headers = headers(),
+    callback = function(res)
+      vim.schedule(function()
+        if not res or res.status ~= 200 then
+          cb(_models_cache.list) -- return cached (maybe empty)
+          return
+        end
+        local okj, data = pcall(vim.json.decode, res.body)
+        if not okj or type(data) ~= "table" then
+          cb(_models_cache.list)
+          return
+        end
+        local out = {}
+        for _, m in ipairs(data.data or {}) do
+          if m.id then
+            out[#out + 1] = m.id
+          end
+        end
+        table.sort(out)
+        _models_cache = { time = now, list = out }
+        cb(out)
+      end)
+    end,
+  })
 end
 
 return M

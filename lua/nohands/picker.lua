@@ -98,33 +98,40 @@ function M.open()
             break
           end
         end
-        local models = api.list_models()
-        if #models == 0 then
-          models = { cfg.model }
-        end
-        local model_items = {}
-        for _, m in ipairs(models) do
-          model_items[#model_items + 1] = { text = m, value = m }
-        end
-        picker_select {
-          title = "nohands: select model",
-          items = model_items,
-          cb = function(model_value)
-            -- Restore original buffer before capturing content
-            if vim.api.nvim_buf_is_valid(orig_buf) then
-              vim.api.nvim_set_current_buf(orig_buf)
-            end
-            actions.run {
-              session = session_name,
-              prompt = prompt_name,
-              source = source,
-              before = before,
-              after = after,
-              model = model_value,
-              bufnr = orig_buf,
-            }
-          end,
-        }
+
+        vim.notify(
+          "Fetching models...",
+          vim.log.levels.INFO,
+          { title = "nohands.nvim", id = "nohands_models" }
+        )
+        api.list_models(function(models)
+          if #models == 0 then
+            models = { cfg.model }
+          end
+          local model_items = {}
+          for _, m in ipairs(models) do
+            model_items[#model_items + 1] = { text = m, value = m }
+          end
+          picker_select {
+            title = "nohands: select model",
+            items = model_items,
+            cb = function(model_value)
+              -- Restore original buffer before capturing content
+              if vim.api.nvim_buf_is_valid(orig_buf) then
+                vim.api.nvim_set_current_buf(orig_buf)
+              end
+              actions.run {
+                session = session_name,
+                prompt = prompt_name,
+                source = source,
+                before = before,
+                after = after,
+                model = model_value,
+                bufnr = orig_buf,
+              }
+            end,
+          }
+        end)
       end,
     }
   end

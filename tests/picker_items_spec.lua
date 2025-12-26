@@ -8,8 +8,8 @@ package.preload["nohands.api"] = function()
       on_success("stub-async-response", nil)
     end,
     chat_stream = function() end,
-    list_models = function()
-      return { "modelA", "modelB" }
+    list_models = function(cb)
+      cb { "modelA", "modelB" }
     end,
   }
 end
