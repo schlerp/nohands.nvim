@@ -63,6 +63,16 @@ By default, `setup()` defines a small set of keymaps (all configurable or disabl
   - `<leader>nr` → `:NoHandsRun` (selection)
   - `<leader>ns` → `:NoHandsStream` (selection, output in float)
 
+### Cheat Sheet
+
+| Mapping | Command | Description |
+|---|---|---|
+| `<leader>nn` | `:NoHands` | Opens the main interactive picker to guide you through choosing a prompt, source, and model. |
+| `<leader>nr` | `:NoHandsRun` | Runs the "explain" prompt on the current buffer (Normal) or selection (Visual). Useful for quick questions. |
+| `<leader>ns` | `:NoHandsStream` | Same as Run, but streams the response token-by-token into a floating window. Great for long explanations. |
+| `<leader>np` | `:NoHandsPalette` | Opens a command palette of all available prompts to run quickly on the current buffer. |
+| `<leader>ni` | _(internal)_ | Runs the "refactor" prompt on the current buffer/selection (useful for inline code changes). |
+
 You can change or disable these by passing a `keys` table to `setup`:
 
 ```lua
