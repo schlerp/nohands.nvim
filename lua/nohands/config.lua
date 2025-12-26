@@ -36,6 +36,11 @@ local defaults = {
   usage = {
     notify = true,
   },
+  language_instructions = {
+    python = "Use type hints (PEP 484) for all function arguments and return values.",
+    lua = "Use EmmyLua annotations for types where helpful.",
+    typescript = "Ensure strict type checking is satisfied.",
+  },
 }
 
 ---@type NoHandsConfig

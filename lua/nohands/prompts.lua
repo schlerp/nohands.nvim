@@ -9,7 +9,9 @@ M.builtin = {
     user = "Refactor the following code for clarity and performance. Preserve behavior.\n"
       .. "You should improve variable names, simplify logic, and enhance structure where possible.\n"
       .. "Consider 3 different ways to refactor this code, and then choose the best option.\n"
-      .. "Return ONLY the refactored code block (e.g. ```lua ... ```). Do not include any explanation.\n\n${content}",
+      .. "Return ONLY the refactored code block (e.g. ```lua ... ```). Do not include any explanation.\n\n${content}\n\n"
+      .. "Reference (Full File):\n```${lang}\n${full_buffer}\n```\n\n"
+      .. "Use the full file for context (imports, utility functions, etc.), but ONLY refactor the code block above. Do not output the full file.",
   },
   explain = {
     name = "explain",
@@ -101,7 +103,38 @@ function M.render(prompt_name, content, ctx)
   local fence_open = lang ~= "" and ("```" .. lang) or "```"
   processed = fence_open .. "\n" .. processed .. "\n```"
 
-  local user_text = (tmpl.user or "${content}"):gsub("${content}", processed)
+  local user_text = (tmpl.user or "${content}"):gsub("${content}", function()
+    return processed
+  end)
+
+  if ctx and ctx.full_buffer then
+    user_text = user_text
+      :gsub("${full_buffer}", function()
+        return ctx.full_buffer
+      end)
+      :gsub("${lang}", function()
+        return lang
+      end)
+  else
+    -- If full_buffer is not available, remove the reference section if it exists in the template
+    user_text = user_text
+      :gsub("Reference %(Full File%):\n```%${lang}\n%${full_buffer}\n```\n\n", "")
+      :gsub("${full_buffer}", "")
+  end
+
+  -- Apply language-specific instructions if available
+  local cfg = config.get()
+  local lang_instructions = cfg.language_instructions or {}
+  local specific_instr = lang_instructions[lang]
+
+  if specific_instr and type(specific_instr) == "string" and specific_instr ~= "" then
+    -- Append language instructions to the user prompt if not already present
+    -- We append it before the content/reference to make sure it's seen as an instruction
+    -- Or we can append it at the very end. Let's append at the end of the instructions part,
+    -- which is usually before the code blocks.
+    -- However, simple appending to the end of user_text is safer and easier.
+    user_text = user_text .. "\n\n" .. "Language Specific Instructions:\n" .. specific_instr
+  end
 
   local messages = {}
   if tmpl.system then

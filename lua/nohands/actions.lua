@@ -103,7 +103,15 @@ function M.run(opts)
   end
   local prompt_name = opts.prompt or "explain"
   local prompt_def = prompts.get(prompt_name)
-  local messages, perr = prompts.render(prompt_name, cobj.text, { meta = cobj.meta })
+
+  local full_buffer_text = nil
+  if source_key == "selection" or source_key == "range" then
+    local full = content.buffer(opts.bufnr)
+    full_buffer_text = full.text
+  end
+
+  local messages, perr =
+    prompts.render(prompt_name, cobj.text, { meta = cobj.meta, full_buffer = full_buffer_text })
   if not messages then
     vim.notify("nohands: " .. perr, vim.log.levels.ERROR)
     return
