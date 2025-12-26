@@ -51,7 +51,7 @@
 
 ---@class NoHandsRunOptions
 ---@field prompt? string
----@field source? 'buffer'|'selection'|'surrounding'|'diff'|'lsp_symbol'|'diagnostic'|'quickfix'
+---@field source? 'buffer'|'selection'|'surrounding'|'diff'|'lsp_symbol'|'diagnostic'|'quickfix'|'range'
 ---@field before? integer
 ---@field after? integer
 ---@field model? string

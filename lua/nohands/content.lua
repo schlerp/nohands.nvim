@@ -96,6 +96,9 @@ M.sources = {
   surrounding = function(opts)
     return M.surrounding(opts.before, opts.after)
   end,
+  range = function(opts)
+    return M.range(opts.start_line, opts.end_line)
+  end,
   diff = function(opts)
     local cfg = require("nohands.config").get().diff
     local bufnr = vim.api.nvim_get_current_buf()

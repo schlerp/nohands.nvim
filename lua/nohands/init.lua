@@ -87,43 +87,61 @@ function M.setup(opts)
   end, {})
   vim.api.nvim_create_user_command("NoHandsRun", function(cmd_opts)
     local prompt_name = cmd_opts.args ~= "" and cmd_opts.args or "explain"
-    local mode = vim.fn.mode()
     local source
-    if mode:match "v" then
-      source = "selection"
+    local start_line, end_line
+    if cmd_opts.range > 0 then
+      source = "range"
+      start_line = cmd_opts.line1 - 1
+      end_line = cmd_opts.line2 - 1
     end
     local prompt_def = prompts.get(prompt_name)
     local cfg_now = config.get()
     local model = (prompt_def and prompt_def.model) or cfg_now.model
-    local status = string.format("nohands: requesting %s (%s)...", model, prompt_name)
-    vim.api.nvim_echo({ { status, "ModeMsg" } }, false, {})
-    vim.cmd "redraw"
+    vim.notify(
+      string.format("Requesting %s (%s)...", model, prompt_name),
+      vim.log.levels.INFO,
+      { title = "nohands.nvim", id = "nohands_run" }
+    )
     vim.schedule(function()
-      actions.run { prompt = prompt_name, source = source, output = "float" }
+      actions.run {
+        prompt = prompt_name,
+        source = source,
+        start_line = start_line,
+        end_line = end_line,
+        output = "float",
+      }
     end)
-  end, { nargs = "?" })
+  end, { nargs = "?", range = true })
   vim.api.nvim_create_user_command("NoHandsStream", function(cmd_opts)
     local prompt_name = cmd_opts.args ~= "" and cmd_opts.args or "explain"
-    local mode = vim.fn.mode()
     local source
-    if mode:match "v" then
-      source = "selection"
+    local start_line, end_line
+    if cmd_opts.range > 0 then
+      source = "range"
+      start_line = cmd_opts.line1 - 1
+      end_line = cmd_opts.line2 - 1
     end
     local prompt_def = prompts.get(prompt_name)
     local cfg_now = config.get()
     local model = (prompt_def and prompt_def.model) or cfg_now.model
-    local status = string.format("nohands: streaming %s (%s)...", model, prompt_name)
-    vim.api.nvim_echo({ { status, "ModeMsg" } }, false, {})
+    vim.notify(
+      string.format("Streaming %s (%s)...", model, prompt_name),
+      vim.log.levels.INFO,
+      { title = "nohands.nvim", id = "nohands_stream" }
+    )
     vim.cmd "redraw"
     vim.schedule(function()
       actions.run {
         prompt = prompt_name,
         stream = true,
-        output = "split",
+        output = "float",
         source = source,
+        start_line = start_line,
+        end_line = end_line,
       }
     end)
-  end, { nargs = "?" })
+  end, { nargs = "?", range = true })
+
   vim.api.nvim_create_user_command("NoHandsSessions", function()
     local names = {}
     for k, _ in pairs(require("nohands.sessions").store) do
