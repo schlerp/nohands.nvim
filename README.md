@@ -214,11 +214,6 @@ stylua --check .
 ```
 If `stylua --check` fails, run `stylua .` then re-run checks.
 
-## Roadmap
-- Tool calling / code edit suggestions.
-- Patch refinement prompts (`diff_refactor`).
-- Multi-file project summarization.
-- Better error surfacing & retry.
-
 ## License
-Choose a license and add it (MIT recommended). Currently unlicensed.
+
+MIT
