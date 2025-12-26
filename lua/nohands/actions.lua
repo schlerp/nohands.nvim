@@ -5,6 +5,7 @@ local api = require "nohands.api"
 local sessions = require "nohands.sessions"
 local output = require "nohands.output"
 local utils = require "nohands.utils"
+local logger = require "nohands.logger"
 
 local M = {}
 
@@ -97,10 +98,17 @@ function M.run(opts)
   local stateless = opts.stateless
   local session
   if stateless then
-    session = { id = opts.session or "stateless", messages = {} }
+    -- Generate a unique ID for this run so it can be saved in history
+    -- without pulling in previous context (maintaining "stateless" input behavior)
+    local ts = os.date "%Y%m%d-%H%M%S"
+    local id = "run-" .. ts
+    session = { id = id, messages = {} }
+    -- Register it in the store so it persists for history viewing
+    sessions.store[id] = session
   else
     session = sessions.get(opts.session)
   end
+
   local prompt_name = opts.prompt or "explain"
   local prompt_def = prompts.get(prompt_name)
 
@@ -172,7 +180,15 @@ function M.run(opts)
       table.insert(session.messages, { role = "assistant", content = full })
       output.write(method, header .. full, state)
       notify_usage(usage, effective_model)
+      logger.info(
+        string.format(
+          "Stream complete (%s): %s...",
+          effective_model,
+          full:sub(1, 100):gsub("\n", " ")
+        )
+      )
     end, function(err)
+      logger.error("Stream error: " .. err)
       vim.notify("Stream error: " .. err, vim.log.levels.ERROR, { title = "nohands.nvim" })
     end)
   else
@@ -181,6 +197,7 @@ function M.run(opts)
       vim.log.levels.INFO,
       { title = "nohands.nvim", id = "nohands_run" }
     )
+    logger.info(string.format("Requesting %s (%s)...", effective_model, prompt_name))
     api.chat_async(effective_model, session.messages, user_opts, function(out, usage)
       table.insert(session.messages, { role = "assistant", content = out })
       local display
@@ -191,7 +208,9 @@ function M.run(opts)
       end
       output.write(method, display, nil, cobj.meta)
       notify_usage(usage, effective_model)
+      logger.info(string.format("Response received (%d chars)", #out))
     end, function(err)
+      logger.error("Request error: " .. err)
       vim.notify("Error: " .. err, vim.log.levels.ERROR, { title = "nohands.nvim" })
     end)
   end
