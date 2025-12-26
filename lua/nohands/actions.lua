@@ -52,17 +52,16 @@ local function notify_usage(usage, model)
   local prompt = usage.prompt_tokens or usage.input_tokens or 0
   local completion = usage.completion_tokens or usage.output_tokens or 0
   local total = usage.total_tokens or (prompt + completion)
-
   local label = model or "model"
+
   local msg = string.format(
-    "nohands: usage (%s)\n  prompt     %d\n  completion %d\n  total      %d",
-    label,
+    "Prompt: %d  |  Completion: %d  |  Total: %d\nModel: %s",
     prompt,
     completion,
-    total
+    total,
+    label
   )
-
-  vim.notify(msg, vim.log.levels.INFO)
+  vim.notify(msg, vim.log.levels.INFO, { title = "nohands.nvim" })
 end
 
 ---@param opts NoHandsRunOptions|nil
@@ -120,9 +119,11 @@ function M.run(opts)
   }
 
   if opts.stream then
-    local status = string.format("nohands: streaming %s (%s)...", effective_model, prompt_name)
-    vim.api.nvim_echo({ { status, "ModeMsg" } }, false, {})
-    vim.cmd "redraw"
+    vim.notify(
+      string.format("Streaming %s (%s)...", effective_model, prompt_name),
+      vim.log.levels.INFO,
+      { title = "nohands.nvim", id = "nohands_stream" }
+    )
 
     local header = format_header(prompt_name, request_text)
     local acc = {}
@@ -148,23 +149,26 @@ function M.run(opts)
         state = output.write(method, header .. current_text(), state)
         last_flush = now
       end
-    end, function(full)
+    end, function(full, usage)
       table.insert(session.messages, { role = "assistant", content = full })
       output.write(method, header .. full, state)
+      notify_usage(usage, effective_model)
     end, function(err)
-      vim.notify("nohands stream error: " .. err, vim.log.levels.ERROR)
+      vim.notify("Stream error: " .. err, vim.log.levels.ERROR, { title = "nohands.nvim" })
     end)
   else
-    local status = string.format("nohands: requesting %s (%s)...", effective_model, prompt_name)
-    vim.api.nvim_echo({ { status, "ModeMsg" } }, false, {})
-    vim.cmd "redraw"
+    vim.notify(
+      string.format("Requesting %s (%s)...", effective_model, prompt_name),
+      vim.log.levels.INFO,
+      { title = "nohands.nvim", id = "nohands_run" }
+    )
     api.chat_async(effective_model, session.messages, user_opts, function(out, usage)
       table.insert(session.messages, { role = "assistant", content = out })
       local display = format_full(prompt_name, request_text, out)
       output.write(method, display)
       notify_usage(usage, effective_model)
     end, function(err)
-      vim.notify("nohands error: " .. err, vim.log.levels.ERROR)
+      vim.notify("Error: " .. err, vim.log.levels.ERROR, { title = "nohands.nvim" })
     end)
   end
 end

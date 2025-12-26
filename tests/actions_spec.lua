@@ -147,11 +147,11 @@ describe("actions.run", function()
 
     local found = false
     for _, n in ipairs(notifications) do
-      if n.msg:match "nohands: usage" then
+      if n.msg:match "Prompt: %d" then
         found = true
-        assert.matches("prompt%s+10", n.msg)
-        assert.matches("completion%s+5", n.msg)
-        assert.matches("total%s+15", n.msg)
+        assert.matches("Prompt:%s+10", n.msg)
+        assert.matches("Completion:%s+5", n.msg)
+        assert.matches("Total:%s+15", n.msg)
       end
     end
     assert.is_true(found, "Usage notification not found")
@@ -185,7 +185,7 @@ describe("actions.run", function()
     api.chat_async = old_chat_async
 
     for _, n in ipairs(notifications) do
-      assert.is_nil(n.msg:match "nohands: usage")
+      assert.is_nil(n.msg:match "Prompt:")
     end
   end)
 end)
